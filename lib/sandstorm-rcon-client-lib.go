@@ -5,7 +5,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"net"
-	"runtime/debug"
+	"strings"
 	"time"
 
 	config "github.com/Joe-Klauza/sandstorm-rcon-client/config"
@@ -19,33 +19,39 @@ type RconPacket struct {
 	Payload string
 }
 
-var conf = config.Get()
+var (
+	conf        = config.Get()
+	l    Logger = noOpLogger{}
+)
+
+func SetLogger(logger Logger) {
+	l = logger
+}
 
 func Auth(conn net.Conn, password string) bool {
 	// Send the authentication packet.
 	authPacket := BuildPacket(1, 3, password)
 	_, err := conn.Write(authPacket)
 	if err != nil {
-		fmt.Println("Error sending authentication packet:", err.Error())
+		l.Errorf("Error sending authentication packet:", err.Error())
 		return false
 	}
 	// Wait for the response.
 	responsePacket := ReadPacket(conn)
 	if responsePacket == nil {
-		fmt.Println("Error reading authentication response.")
+		l.Errorf("Error reading authentication response.")
 		return false
 	}
 	if responsePacket.ID != -1 {
-		fmt.Println("Authentication successful.")
+		l.Infof("Authentication successful.")
 		return true
 	} else {
-		fmt.Println("Authentication failed.")
+		l.Errorf("Authentication failed.")
 		return false
 	}
 }
 
 func Repl(conn net.Conn) {
-	fmt.Println("Entering command REPL. Press ctrl+c or ctrl+d to exit.")
 	var completer = readline.NewPrefixCompleter(
 		readline.PcItem("help"),
 		readline.PcItem("listplayers"),
@@ -73,7 +79,7 @@ func Repl(conn net.Conn) {
 		AutoComplete:      completer,
 	})
 	if err != nil {
-		fmt.Println("Authentication failed.")
+		l.Errorf("Failed to instantiate readline")
 		return
 	}
 	for {
@@ -94,13 +100,18 @@ func SendAndPrint(conn net.Conn, command string) error {
 		return fmt.Errorf("error sending command: %s", err.Error())
 	}
 	// Print output
-	fmt.Println("Server response:\n", output)
+	if strings.TrimSpace(output) == "" {
+		l.Infof("Server response empty", output)
+		return nil
+	}
+	l.Infof("Server response:\n%s", output)
 	return nil
 }
 
 func Send(conn net.Conn, command string) (string, error) {
 	// Send the command packet.
 	commandPacket := BuildPacket(1, 2, command)
+	l.Debugf("Sending command: %s", command)
 	_, err := conn.Write(commandPacket)
 	if err != nil {
 		return "", fmt.Errorf("error sending command packet: %s", err.Error())
@@ -113,6 +124,7 @@ func Send(conn net.Conn, command string) (string, error) {
 }
 
 func BuildPacket(id int32, packetType int32, payload string) []byte {
+	l.Debugf("Building packet with id %d, type %d, payload %s", id, packetType, payload)
 	packetSize := int32(10 + len(payload))
 	payload += "\x00\x00"
 	buffer := new(bytes.Buffer)
@@ -126,9 +138,10 @@ func BuildPacket(id int32, packetType int32, payload string) []byte {
 func ReadPacket(conn net.Conn) *RconPacket {
 	conn.SetReadDeadline(time.Now().Add(conf.Timeout))
 	headerBytes := make([]byte, 4*3)
+	l.Debugf("Reading response header")
 	_, err := conn.Read(headerBytes)
 	if err != nil {
-		fmt.Println("Error reading response header:", err.Error())
+		l.Errorf("Error reading response header:", err.Error())
 		return nil
 	}
 	packetSize := binary.LittleEndian.Uint32(headerBytes[0:4])
@@ -140,27 +153,25 @@ func ReadPacket(conn net.Conn) *RconPacket {
 		Type:    int32(packetType),
 		Payload: "",
 	}
+	l.Debugf("Got packet with size %d, id %d, type %d", packetSize, packetID, packetType)
 	if packetSize > 10 {
-		payloadBytes := make([]byte, packetSize-10)
+		payloadBytesSize := packetSize - 10
+		payloadBytes := make([]byte, payloadBytesSize)
+		l.Debugf("Reading response payload bytes (%d)", payloadBytesSize)
 		_, err = conn.Read(payloadBytes)
 		if err != nil {
-			fmt.Println("Error reading response payload:", err.Error())
+			l.Errorf("Error reading response payload:", err.Error())
 			return nil
 		}
 		packet.Payload = string(payloadBytes)
+		l.Debugf("Response payload: %s", packet.Payload)
 	}
 	// Consume 2 bytes of padding.
 	payloadBytes := make([]byte, 2)
 	_, err = conn.Read(payloadBytes)
 	if err != nil {
-		fmt.Println("Error trimming response padding:", err.Error())
+		l.Errorf("Error trimming response padding:", err.Error())
 		return nil
 	}
 	return packet
-}
-
-func Version() {
-	if bi, ok := debug.ReadBuildInfo(); ok {
-		fmt.Printf("%+v\n", bi)
-	}
 }

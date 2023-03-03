@@ -1,0 +1,12 @@
+# Example crontab file for scheduled commands (e.g. MOTD)
+# Documentation: https://pkg.go.dev/github.com/robfig/cron#hdr-CRON_Expression_Format
+#┏━ Second of the minute
+#┃     ┏━ Minute of the hour
+#┃     ┃     ┏━ Hour of the day
+#┃     ┃     ┃     ┏━ Day of the month
+#┃     ┃     ┃     ┃     ┏━ Month
+#┃     ┃     ┃     ┃     ┃     ┏━ Day of the week
+#┃     ┃     ┃     ┃     ┃     ┃     ┏━ RCON command
+ */30  *     *     *     *     *     say Every 30 seconds
+ 0     *     *     *     *     *     say Every minute
+ 0     */10  *     *     *     *     say Every 10 minutes
