@@ -91,7 +91,7 @@ func Repl(conn net.Conn) {
 func SendAndPrint(conn net.Conn, command string) error {
 	output, err := Send(conn, command)
 	if err != nil {
-		return fmt.Errorf("Error sending command: %s", err.Error())
+		return fmt.Errorf("error sending command: %s", err.Error())
 	}
 	// Print output
 	fmt.Println("Server response:\n", output)
@@ -103,11 +103,11 @@ func Send(conn net.Conn, command string) (string, error) {
 	commandPacket := BuildPacket(1, 2, command)
 	_, err := conn.Write(commandPacket)
 	if err != nil {
-		return "", fmt.Errorf("Error sending command packet: %s", err.Error())
+		return "", fmt.Errorf("error sending command packet: %s", err.Error())
 	}
 	responsePacket := ReadPacket(conn)
 	if responsePacket == nil {
-		return "", fmt.Errorf("Error reading command response.")
+		return "", fmt.Errorf("error reading command response")
 	}
 	return responsePacket.Payload, nil
 }
