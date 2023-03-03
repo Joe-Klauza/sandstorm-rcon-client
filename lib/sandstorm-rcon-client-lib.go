@@ -153,7 +153,7 @@ func ReadPacket(conn net.Conn) *RconPacket {
 	payloadBytes := make([]byte, 2)
 	_, err = conn.Read(payloadBytes)
 	if err != nil {
-		fmt.Println("Error trimming authentication response:", err.Error())
+		fmt.Println("Error trimming response padding:", err.Error())
 		return nil
 	}
 	return packet
