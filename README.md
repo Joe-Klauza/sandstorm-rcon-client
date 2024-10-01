@@ -22,6 +22,9 @@ Usage of sandstorm-rcon-client:
         RCON password (short)
   -password string
         RCON password
+  -q    Disable logging (e.g. for scripting output) (short)
+  -quiet
+        Disable logging (e.g. for scripting output)
   -s string
         Server IP:Port (short) (default "127.0.0.1:27015")
   -server string

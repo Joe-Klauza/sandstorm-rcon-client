@@ -34,6 +34,7 @@ func main() {
 	version := flag.Bool("version", false, "Print version and exit")
 	cronfile := flag.String("cronfile", "", "Path to crontab file for scheduled commands")
 	debug := flag.Bool("debug", false, "Enable debug logging")
+	quiet := flag.Bool("quiet", false, "Disable logging (e.g. for scripting output)")
 	noRepl := flag.Bool("norepl", false, "Disable REPL mode (e.g. when using --cronfile)")
 	// Short form flags
 	flag.StringVar(server, "s", "127.0.0.1:27015", "Server IP:Port (short)")
@@ -41,6 +42,7 @@ func main() {
 	flag.StringVar(command, "c", "", "RCON command to execute (short)")
 	flag.BoolVar(version, "v", false, "Print version and exit (short)")
 	flag.StringVar(cronfile, "f", "", "Path to crontab file for scheduled commands (short)")
+	flag.BoolVar(quiet, "q", false, "Disable logging (e.g. for scripting output) (short)")
 	flag.BoolVar(noRepl, "n", false, "Disable REPL mode (e.g. when using --cronfile) (short)")
 	flag.Parse()
 
@@ -49,7 +51,7 @@ func main() {
 		return
 	}
 
-	logger := configureLogging(*debug)
+	logger := configureLogging(*debug, *quiet)
 	defer logger.Sync()
 	l = logger.Sugar()
 	client.SetLogger(client.ZapAdapter{Logger: l})
@@ -96,9 +98,11 @@ func main() {
 	l.Info("Exiting")
 }
 
-func configureLogging(debug bool) *zap.Logger {
+func configureLogging(debug bool, quiet bool) *zap.Logger {
 	level := zapcore.InfoLevel
-	if debug {
+	if quiet {
+		level = zapcore.InvalidLevel
+	} else if debug {
 		level = zapcore.DebugLevel
 	}
 	core := zapcore.NewCore(
